@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/clerk-react";
 import FileUploader from "./FileUploader";
 import FileList from "./FileList";
 import FilePreview from "./FilePreview";
+import FolderList from "./FolderList";
 import {
   uploadFile,
   fetchUserFiles,
@@ -18,6 +19,8 @@ export default function FileManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [folders, setFolders] = useState([]);
+  const [currentFolder, setCurrentFolder] = useState(null);
 
   // Load user's files when component mounts
   useEffect(() => {
@@ -47,33 +50,42 @@ export default function FileManager() {
     setError(null);
 
     try {
-      // Create FormData
+      // Create FormData with only the file
       const formData = new FormData();
       formData.append("file", file);
 
-      // Include the user ID from Clerk
-      //formData.append("userId", userId);
+      // Add more detailed logging
+      console.log("Starting upload for file:", file.name);
 
       const response = await uploadFile(formData, (progress) => {
         setUploadProgress(progress);
+        console.log(`Upload progress: ${progress}%`);
       });
 
-      // Add the new file to our files state
-      const newFile = {
-        id: response.file_id,
-        name: file.name,
-        type: response.document_type,
-        downloadUrl: response.download_url,
-        text: response.text,
-        uploadedAt: new Date().toISOString(),
-      };
+      // Log the response for debugging
+      console.log("Upload response:", response);
 
-      setFiles((prev) => [newFile, ...prev]);
+      // More flexible response handling
+      if (response) {
+        const newFile = {
+          id: response.file_id || `temp-${Date.now()}`,
+          name: file.name,
+          type: response.document_type || file.type,
+          downloadUrl: response.download_url || "",
+          text: response.text || "",
+          uploadedAt: new Date().toISOString(),
+        };
+
+        setFiles((prev) => [newFile, ...prev]);
+      } else {
+        throw new Error("Empty response from server");
+      }
     } catch (err) {
       setError(err.message || "An error occurred during upload");
       console.error("Upload error:", err);
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -95,6 +107,20 @@ export default function FileManager() {
     } catch (err) {
       console.error("Error deleting file:", err);
       setError("Failed to delete file. Please try again later.");
+    }
+  };
+
+  const handleCreateFolder = async (folderName) => {
+    try {
+      const newFolder = await createFolder({
+        name: folderName,
+        userId,
+        parentId: currentFolder?.id || null,
+      });
+      setFolders([...folders, newFolder]);
+    } catch (error) {
+      setError("Failed to create folder");
+      console.error("Error creating folder:", error);
     }
   };
 
@@ -131,6 +157,16 @@ export default function FileManager() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Folder Section */}
+            <div className="lg:col-span-1">
+              <FolderList
+                folders={folders}
+                currentFolder={currentFolder}
+                onFolderClick={setCurrentFolder}
+                onCreateFolder={handleCreateFolder}
+              />
+            </div>
+
             {/* Upload Section */}
             <div className="lg:col-span-1">
               <FileUploader
@@ -144,7 +180,9 @@ export default function FileManager() {
             {/* Files List Section */}
             <div className="lg:col-span-1">
               <FileList
-                files={files}
+                files={files.filter(
+                  (file) => file.folderId === currentFolder?.id
+                )}
                 onSelectFile={handleSelectFile}
                 onDeleteFile={handleDeleteFile}
                 selectedFileId={selectedFile?.id}

@@ -1,4 +1,5 @@
 export default function FilePreview({ file }) {
+  //console.log("File object:", file);
   if (!file) {
     return (
       <div className="h-full border border-gray-200 rounded-md p-6 flex items-center justify-center">

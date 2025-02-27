@@ -32,6 +32,25 @@ export default function FileList({ files, onSelectFile, selectedFileId }) {
     }
   };
 
+  const handleDragStart = (e, file) => {
+    e.dataTransfer.setData("fileId", file.id);
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    const fileId = e.dataTransfer.getData("fileId");
+    const targetFolderId = currentFolder?.id || null;
+
+    try {
+      await updateFileLocation(fileId, targetFolderId);
+      // Refresh files list after moving
+      const updatedFiles = await fetchUserFiles(userId);
+      setFiles(updatedFiles);
+    } catch (error) {
+      setError("Failed to move file");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-medium text-gray-800">Your Files</h2>
@@ -72,6 +91,8 @@ export default function FileList({ files, onSelectFile, selectedFileId }) {
             {filteredFiles.map((file) => (
               <li
                 key={file.id}
+                draggable
+                onDrag={(e) => handleDragStart(e, file)}
                 onClick={() => onSelectFile(file)}
                 className={`p-3 hover:bg-gray-50 cursor-pointer ${
                   selectedFileId === file.id
