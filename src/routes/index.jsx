@@ -6,6 +6,7 @@ import DashboardPage from "../pages/DashboardPage";
 import ProfilePage from "../pages/ProfilePage";
 import NotFoundPage from "../pages/NotFoundPage";
 import FileManager from "../pages/FileManager";
+import Analysis from "../pages/Analysis";
 
 // Define all routes in a centralized location
 const router = createBrowserRouter([
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
       {
         path: "/file",
         element: <FileManager />,
+      },
+      {
+        path: "/analysis",
+        element: <Analysis />,
       },
     ],
   },
